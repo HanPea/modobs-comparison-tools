@@ -2,6 +2,8 @@
 This script contains several functions for spatio- (or spatio-temporally) interpolating 2D, 3D or 4D (with time dimension) model output onto selected sites, altitudes and times
 Author: Hana Pearce
 Last edited: 12.10.2016
+
+Adding a line here to test github commit
 """
 
 def interpolate_array2d_surfaceobs(array2d,glon,glat,lon_obs,lat_obs):
