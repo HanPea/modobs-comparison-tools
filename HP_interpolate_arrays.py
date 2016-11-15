@@ -32,12 +32,19 @@ def interpolate_array2d_surfaceobs(array2d,glon,glat,lon_obs,lat_obs):
             glon[i] = glon[i] + 360.0
 	    iglon = iglon + 1
 
+    # calculate latitude ordering: UM (S->N) or TOMCAT (N->S)
+    if glat[1] > glat[2]: ilatincreasing = 0
+    if glat[1] < glat[2]: ilatincreasing = 1
+
+
     for i in range(len(lon_obs)):
         if math.isnan(lon_obs[i]) == False:
+
+	    # BEGIN LONGITUDINAL INTERPOLATION
             # which tomcat square is point to interpolate to
-            ii, = np.where(glon > lon_obs[i]) #comma is required here to unpack the result from numpy.where and assign ii to be the first element of that tuple
+            ii, = np.where(glon > lon_obs[i]) # comma is required here to unpack the result from numpy.where and assign ii to be the first element of that tuple
             # ii contains the indexes of all model latitudes greater than lat_obs
-            if (len(ii) < 1):     #i.e. if longitude is between 358.125deg and 0deg (360)
+            if (len(ii) < 1):     # i.e. if longitude is between 358.125deg and 0deg (360)
                 print 'No longitude grid-points greater than lon_obs[i]=',lon_obs[i]
                 print 'Set ii just to include grid-point with max longitude (up to 360)'
                 maxlon=np.max(glon)
@@ -48,37 +55,68 @@ def interpolate_array2d_surfaceobs(array2d,glon,glat,lon_obs,lat_obs):
             minlongtobslon = np.min(glon[ii]) # first longitude larger than lat_obs
             iminlongtobslon, = np.where(glon==minlongtobslon) # glat index ref. of first latitude larger than lat_obs
 
+	    lon0 = int(iminlongtobslon) -1
+            lon1 = int(iminlongtobslon)
+            if lon0 == -1: lon0 = nlon-1
+
+	    print 'site lon ', lon_obs[i], 'is between model lons ', glon[lon0],' and ', glon[lon1]
+
+	    # BEGIN LATITUDINAL INTERPOLATION		
             jj, = np.where(glat > lat_obs[i]) # jj = index of all model latitudes greater than lat_obs
-            minlatitobslat = np.min(glat[jj]) # first latitude larger than lat_obs
-            iminlatitobslat, = np.where(glat==minlatitobslat) # glat index ref. of first latitude larger than lat_obs
-	    # calculate latitude ordering: UM (S->N) or TOMCAT (N->S)
-	    if glat[1] > glat[2]: ilatincreasing = 0
-            if glat[1] < glat[2]: ilatincreasing = 1
+	    print 'len jj is ', len(jj)
+	    if ilatincreasing == 1: #follow UM lat ordering (-ve to +ve)
+		print 'ilatincreasing = 1'
+	    	if len(jj) < 1:
+			print 'No simulated latitudes greater than observed latitude'
+			lat0 = nlat-2
+			lat1 = nlat-1
+			print 'site lat ', lat_obs[i], 'is near to ', glat[lat0],' and ', glat[lat1]
+
+		elif nlat > len(jj) >= 1:
+			#print 'ilatincreasing = 1'
+			minlatitobslat = np.min(glat[jj]) # first latitude larger than lat_obs
+            		iminlatitobslat, = np.where(glat==minlatitobslat) # glat index ref. of first latitude larger than lat_obs
+		        lat0 = int(iminlatitobslat)
+        	        lat1 = int(iminlatitobslat) -1
+
+			assert glat[lat0] < lat_obs[i] < glat[lat1]
+
+		elif len(jj) == nlat:
+			print 'No simulated latitudes less than observed latitude'
+			lat0 = 0	
+			lat1 = 1
+			print 'site lat ', lat_obs[i], 'is near to ', glat[lat0],' and ', glat[lat1]
 
             if ilatincreasing == 0: # follow TOMCAT lat ordering (+ve to -ve)
-		print 'ilatincreasing = 0'
-                lat0 = int(iminlatitobslat)
-                lat1 = int(iminlatitobslat) +1
-		if lat0 == nlat-1: # fix it for South Pole
-                    lat0=nlat-2
-                    lat1=nlat-1
-                lon0 = int(iminlongtobslon) -1
-                lon1 = int(iminlongtobslon)
-		
-            if ilatincreasing == 1: #follow UM lat ordering (-ve to +ve)
-                print 'ilatincreasing = 1'
-                lat0 = int(iminlatitobslat)
-                lat1 = int(iminlatitobslat) -1
-		if lat0 == 0: # fix it for South Pole
-                    lat0=1
-                    lat1=0
-                lon0 = int(iminlongtobslon) -1
-                lon1 = int(iminlongtobslon)
-                if lon0 == -1: lon0 = nlon-1
-                print 'site lat ', lat_obs[i], 'is between model lats ', glat[lat0],' and ', glat[lat1]
-                print 'site lon ', lon_obs[i], 'is between model lons ', glon[lon0],' and ', glon[lon1]
-                print 'lat0 %d, lat1 %d, lon0 %d, lon1 %d' % (lat0, lat1, lon0, lon1)
-		
+                print 'ilatincreasing = 0'
+
+		if len(jj) == nlat:
+			print 'No simulated latitudes greater than observed latitude'
+			lat0 = nlat-2
+			lat1 = nlat-1
+			print 'site lat ', lat_obs[i], 'is near to ', glat[lat0],' and ', glat[lat1]
+
+		elif 1 <= len(jj) < nlat:
+			print 'len jj is ', len(jj)
+			minlatitobslat = np.min(glat[jj]) # first latitude larger than lat_obs
+			iminlatitobslat, = np.where(glat==minlatitobslat) # glat index ref. of first latitude larger than lat_obs
+ 	                lat0 = int(iminlatitobslat)
+        	        lat1 = int(iminlatitobslat) +1
+
+			assert glat[lat0] > lat_obs[i] > glat[lat1]
+		elif len(jj) < 1: 
+			print 'No simulated latitudes less than observed latitude'
+			lat0 = 0
+			lat1 = 1
+			print 'site lat ', lat_obs[i], 'is near to ', glat[lat0],' and ', glat[lat1]
+			
+
+#            print 'site lat ', lat_obs[i], 'is between model lats ', glat[lat0],' and ', glat[lat1]
+	    print 'site lon ', lon_obs[i], 'is between model lons ', glon[lon0],' and ', glon[lon1]
+	    #assert glon[lon0] <= lon_obs[i] <= glon[lon1]
+            #print 'site lon ', lon_obs[i], 'is between model lons ', glon[lon0],' and ', glon[lon1]
+            #print 'lat0 %d, lat1 %d, lon0 %d, lon1 %d' % (lat0, lat1, lon0, lon1)
+	    
             array_pres=[0,0,0,0]
             array_lon=[0,0]
 
